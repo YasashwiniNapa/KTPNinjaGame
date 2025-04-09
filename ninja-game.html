@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ninja Nights</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+<script>
+class NinjaGame extends Phaser.Scene {
+  constructor() {
+    super("NinjaGame");
+  }
+
+  preload() {
+    this.load.image("ninja", "images/ninja.png"); // no leading slash
+    this.load.image("background", "images/background.png");
+    this.load.image("obstacle", "images/obstacle.png");
+  }
+
+  create() {
+    // Add background just for visuals
+    this.add.image(400, 300, "background").setScale(2);
+
+    // Ground as a simple platform
+    this.ground = this.physics.add.staticGroup();
+    this.ground.create(400, 580, "background").setScale(1.5, 0.1).refreshBody(); // stretched horizontally, short height
+
+    // Ninja sprite
+    this.ninja = this.physics.add.sprite(100, 450, "ninja").setScale(0.25);
+    this.ninja.setCollideWorldBounds(true);
+
+    // Add gravity to ninja
+    this.ninja.body.setGravityY(800);
+
+    // Colliders
+    this.physics.add.collider(this.ninja, this.ground);
+
+    this.obstacles = this.physics.add.group();
+    this.physics.add.collider(this.obstacles, this.ground);
+    this.physics.add.overlap(this.ninja, this.obstacles, this.gameOver, null, this);
+
+    // Controls
+    this.cursors = this.input.keyboard.createCursorKeys();
+
+    // Score
+    this.score = 0;
+    this.scoreText = this.add.text(16, 16, "Score: 0", { fontSize: "32px", fill: "#fff" });
+
+    // Timer for obstacles
+    this.timer = this.time.addEvent({
+      delay: 1500,
+      callback: this.spawnObstacle,
+      callbackScope: this,
+      loop: true,
+    });
+  }
+
+  update() {
+    if (this.cursors.up.isDown && this.ninja.body.touching.down) {
+      this.ninja.setVelocityY(-450);
+    }
+
+    this.obstacles.children.iterate((obstacle) => {
+      if (obstacle.x < -50) {
+        obstacle.destroy();
+        this.score++;
+        this.scoreText.setText("Score: " + this.score);
+      }
+    });
+  }
+
+  spawnObstacle() {
+    const obstacle = this.obstacles.create(800, 540, "obstacle").setScale(0.25);
+    obstacle.setVelocityX(-300);
+    obstacle.setImmovable();
+    obstacle.body.allowGravity = false;
+  }
+
+  gameOver() {
+    this.physics.pause();
+    this.ninja.setTint(0xff0000);
+    this.scoreText.setText("Game Over! Score: " + this.score);
+    this.timer.remove();
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  physics: {
+    default: "arcade",
+    arcade: {
+      gravity: { y: 0 }, // global gravity not needed since we set gravity manually
+      debug: false,
+    },
+  },
+  scene: NinjaGame,
+};
+
+const game = new Phaser.Game(config);
+</script>
+</body>
+</html>
